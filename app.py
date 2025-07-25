@@ -61,11 +61,12 @@ if "explanation_loop" not in st.session_state:
     st.session_state.explanation_loop = 0
 if "show_explanation" not in st.session_state:
     st.session_state.show_explanation = False
+if "auto_next" not in st.session_state:
+    st.session_state.auto_next = False
 
-# 出題プロンプト
-if st.button("問題を出して！"):
-    with st.spinner("先生が考え中…"):
-        prompt = f"""
+# --------- 自動出題処理 ---------
+def generate_new_question():
+    prompt = f"""
 あなたは日本の中学1年生向け学習支援AI「{character}」です。
 キャラクター性：{character_profiles[character]['persona']}
 次の条件で、【問題】【選択肢4つ】【正解】【理由の解説】に加えて、必ず【正解時コメント】【不正解時コメント】もキャラらしく日本語で付けて、以下のJSON形式だけで返してください。
@@ -85,20 +86,32 @@ if st.button("問題を出して！"):
   "incorrect_message": "..."
 }}
 """
-        try:
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[{"role": "user", "content": prompt}],
-            )
-            content = response.choices[0].message.content
-            json_start = content.find("{")
-            json_end = content.rfind("}") + 1
-            data = json.loads(content[json_start:json_end])
-            st.session_state.qa_data = data
-            st.session_state.explanation_loop = 0
-            st.session_state.show_explanation = False
-        except Exception as e:
-            st.error(f"問題取得に失敗しました: {str(e)}")
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        content = response.choices[0].message.content
+        json_start = content.find("{")
+        json_end = content.rfind("}") + 1
+        data = json.loads(content[json_start:json_end])
+        st.session_state.qa_data = data
+        st.session_state.explanation_loop = 0
+        st.session_state.show_explanation = False
+    except Exception as e:
+        st.error(f"問題取得に失敗しました: {str(e)}")
+
+# ページ先頭で自動出題（auto_nextフラグがTrueなら）
+if st.session_state.auto_next:
+    with st.spinner("次の問題を用意中…"):
+        generate_new_question()
+        st.session_state.auto_next = False
+    st.rerun()
+
+# ---------- 手動出題 -----------
+if st.button("問題を出して！"):
+    with st.spinner("先生が考え中…"):
+        generate_new_question()
 
 # 出題・解答判定
 if st.session_state.qa_data:
@@ -111,11 +124,13 @@ if st.session_state.qa_data:
         if choice == qd["answer"]:
             st.success(qd.get("correct_message", "🎉 正解だよ！すごいねっ！"))
         else:
-            st.error(qd.get("incorrect_message", f"🙈 残念…正解は「{qd['answer']}」だよ〜"))
+            st.error(
+                qd.get("incorrect_message", f"🙈 残念…正解は「{qd['answer']}」だよ〜")
+            )
         st.info(f"🧠 解説：{qd['explanation']}")
         st.session_state.show_explanation = True
 
-    # さらに分かりやすい解説
+    # さらに分かりやすい解説 + 次の問題ボタン
     if st.session_state.show_explanation:
         col1, col2 = st.columns(2)
         with col1:
@@ -143,6 +158,7 @@ if st.session_state.qa_data:
             if st.button("次の問題に進む"):
                 st.session_state.qa_data = None
                 st.session_state.show_explanation = False
+                st.session_state.auto_next = True
                 st.rerun()
 
 # 初期ガイダンス
