@@ -9,12 +9,12 @@ client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 # キャラクタープロファイル
 character_profiles = {
-    "陽気な萌え系女子先生（さくら先生）": {
+    "さくら先生": {
         "image_url": "https://raw.githubusercontent.com/sjingyuan791/Ai-Drill-Streamlit/main/sakura.png",
         "style": "優しく元気いっぱい、語尾に『〜だよ♪』『すごいねっ！』など",
         "persona": "陽気で元気いっぱいな女子先生。やさしく丁寧に励ます口調。",
     },
-    "クールなツンデレ男子先生（レイ先生）": {
+    "レイ先生": {
         "image_url": "https://raw.githubusercontent.com/sjingyuan791/Ai-Drill-Streamlit/main/rei.png",
         "style": "冷静で的確、時々ツンデレ風。『…べ、別にお前のためじゃない』等",
         "persona": "クールでツンデレな男子先生。ぶっきらぼうだが分かりやすく説明。",
