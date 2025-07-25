@@ -7,7 +7,7 @@ import json
 st.set_page_config(page_title="AIドリル for 中学生", layout="centered")
 
 # 🔑 OpenAI APIキーの読み込み
-openai.api_key = st.secrets["openai_api_key"]
+openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # 🎭 キャラクター設定
 character_profiles = {
