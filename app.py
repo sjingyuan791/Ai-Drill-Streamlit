@@ -143,7 +143,7 @@ if st.session_state.qa_data:
             if st.button("次の問題に進む"):
                 st.session_state.qa_data = None
                 st.session_state.show_explanation = False
-                st.experimental_rerun()
+                st.rerun()
 
 # 初期ガイダンス
 if not st.session_state.qa_data:
