@@ -23,12 +23,31 @@ character_profiles = {
 
 # UI: 先生・教科・単元・難易度
 character = st.selectbox("AI先生を選んでね", list(character_profiles.keys()))
-st.image(character_profiles[character]["image_url"], caption=character, use_container_width=True)
+st.image(
+    character_profiles[character]["image_url"],
+    caption=character,
+    use_container_width=True,
+)
 subjects = {
     "国語": ["漢字・語句", "文法・品詞", "説明文読解", "文学的文章読解"],
-    "数学": ["正の数と負の数", "文字式", "一次方程式", "比例と反比例", "平面図形", "空間図形", "資料の活用"],
+    "数学": [
+        "正の数と負の数",
+        "文字式",
+        "一次方程式",
+        "比例と反比例",
+        "平面図形",
+        "空間図形",
+        "資料の活用",
+    ],
     "英語": ["be動詞", "一般動詞", "疑問詞", "助動詞can", "現在進行形", "代名詞"],
-    "社会": ["日本の位置と領域", "世界の気候", "旧石器〜弥生時代", "古代国家", "中世〜近世", "公民：憲法と経済"],
+    "社会": [
+        "日本の位置と領域",
+        "世界の気候",
+        "旧石器〜弥生時代",
+        "古代国家",
+        "中世〜近世",
+        "公民：憲法と経済",
+    ],
     "理科": ["植物", "水溶液", "光と音", "生物の分類"],
 }
 subject = st.selectbox("教科をえらぼう！", list(subjects.keys()))
@@ -86,7 +105,7 @@ if st.session_state.qa_data:
     qd = st.session_state.qa_data
     st.markdown(f"### 📝 {character}からの問題：")
     st.markdown(f"**{qd['question']}**")
-    choice = st.radio("こたえをえらんでね：", qd["choices"])
+    choice = st.radio("こたえをえらんでね：", qd["choices"], key=f"choices_{qd['question']}")
 
     if st.button("こたえあわせ！"):
         if choice == qd["answer"]:
@@ -98,9 +117,11 @@ if st.session_state.qa_data:
 
     # さらに分かりやすい解説
     if st.session_state.show_explanation:
-        if st.button("まだよくわからない…もう一度説明して"):
-            st.session_state.explanation_loop += 1
-            loop_prompt = f"""
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("まだよくわからない…もう一度説明して"):
+                st.session_state.explanation_loop += 1
+                loop_prompt = f"""
 あなたは日本の中学1年生向け学習支援AI「{character}」です。
 キャラクター性：{character_profiles[character]['persona']}
 いまから出す解説を、{st.session_state.explanation_loop+1}回目の説明として、小学生にも分かるようにキャラらしい優しい口調で言い換えてください。
@@ -108,17 +129,24 @@ if st.session_state.qa_data:
 【もとの解説】
 {qd['explanation']}
 """
-            try:
-                loop_response = client.chat.completions.create(
-                    model="gpt-4o",
-                    messages=[{"role": "user", "content": loop_prompt}],
-                )
-                loop_expl = loop_response.choices[0].message.content.strip()
-                st.warning(f"🧠 もっとやさしい解説：\n{loop_expl}")
-                st.session_state.qa_data["explanation"] = loop_expl
-            except Exception as e:
-                st.warning("もう少しうまく説明できなかったみたい…")
+                try:
+                    loop_response = client.chat.completions.create(
+                        model="gpt-4o",
+                        messages=[{"role": "user", "content": loop_prompt}],
+                    )
+                    loop_expl = loop_response.choices[0].message.content.strip()
+                    st.warning(f"🧠 もっとやさしい解説：\n{loop_expl}")
+                    st.session_state.qa_data["explanation"] = loop_expl
+                except Exception as e:
+                    st.warning("もう少しうまく説明できなかったみたい…")
+        with col2:
+            if st.button("次の問題に進む"):
+                st.session_state.qa_data = None
+                st.session_state.show_explanation = False
+                st.experimental_rerun()
 
 # 初期ガイダンス
 if not st.session_state.qa_data:
-    st.markdown("👆 上のメニューから好きな教科・単元・先生をえらんで、\"問題を出して！\"ボタンを押してね！")
+    st.markdown(
+        '👆 上のメニューから好きな教科・単元・先生をえらんで、"問題を出して！"ボタンを押してね！'
+    )
