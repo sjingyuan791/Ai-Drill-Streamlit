@@ -1,13 +1,18 @@
 import streamlit as st
 from openai import OpenAI
+from supabase import create_client, Client
 import json
+
+# === Supabase接続 ===
+url = st.secrets["SUPABASE_URL"]
+key = st.secrets["SUPABASE_KEY"]
+supabase: Client = create_client(url, key)
 
 st.set_page_config(page_title="AIドリル for 中学生", layout="centered")
 
-# OpenAIクライアント
 client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
-# キャラクタープロファイル
+# --- キャラクター設定 ---
 character_profiles = {
     "さくら先生": {
         "image_url": "https://raw.githubusercontent.com/sjingyuan791/Ai-Drill-Streamlit/main/sakura.png",
@@ -21,7 +26,99 @@ character_profiles = {
     },
 }
 
-# UI: 先生・教科・単元・難易度
+# --- ページ管理 ---
+if "user_id" not in st.session_state:
+    st.session_state.user_id = None
+if "page" not in st.session_state:
+    st.session_state.page = "login"
+if "qa_data" not in st.session_state:
+    st.session_state.qa_data = None
+if "explanation_loop" not in st.session_state:
+    st.session_state.explanation_loop = 0
+if "show_explanation" not in st.session_state:
+    st.session_state.show_explanation = False
+if "auto_next" not in st.session_state:
+    st.session_state.auto_next = False
+
+
+# === Supabase認証関連 ===
+def create_user(username, password):
+    data = {"username": username, "password": password}
+    res = supabase.table("user").insert(data).execute()
+    if res.data:
+        return True
+    return False
+
+
+def check_login(username, password):
+    res = (
+        supabase.table("user")
+        .select("*")
+        .eq("username", username)
+        .eq("password", password)
+        .execute()
+    )
+    if res.data:
+        return res.data[0]["id"]  # user_id
+    return None
+
+
+def get_username(user_id):
+    res = supabase.table("user").select("username").eq("id", user_id).execute()
+    if res.data:
+        return res.data[0]["username"]
+    return ""
+
+
+def save_answer_log(user_id, subject, topic, question, selected_choice, is_correct):
+    data = {
+        "user_id": user_id,
+        "subject": subject,
+        "topic": topic,
+        "question": question,
+        "selected_choice": selected_choice,
+        "is_correct": is_correct,
+    }
+    supabase.table("answer_log").insert(data).execute()
+
+
+# --- ログイン・新規登録画面 ---
+if st.session_state.user_id is None:
+    if st.session_state.page == "login":
+        st.header("ログイン")
+        username = st.text_input("ユーザー名")
+        password = st.text_input("パスワード", type="password")
+        if st.button("ログイン"):
+            user_id = check_login(username, password)
+            if user_id:
+                st.session_state.user_id = user_id
+                st.success("ログイン成功！")
+                st.rerun()
+            else:
+                st.error("ログイン失敗。ユーザー名またはパスワードが違います。")
+        if st.button("新規登録はこちら"):
+            st.session_state.page = "signup"
+            st.rerun()
+
+    elif st.session_state.page == "signup":
+        st.header("新規登録")
+        new_username = st.text_input("新しいユーザー名")
+        new_password = st.text_input("新しいパスワード", type="password")
+        if st.button("登録"):
+            if create_user(new_username, new_password):
+                st.success("登録成功！そのままログインしてください。")
+                st.session_state.page = "login"
+                st.rerun()
+            else:
+                st.error("そのユーザー名はすでに使われています。")
+        if st.button("ログイン画面へ戻る"):
+            st.session_state.page = "login"
+            st.rerun()
+    st.stop()
+
+# --- 本編 ---
+st.write(f"こんにちは、{get_username(st.session_state.user_id)} さん！")
+
 character = st.selectbox("AI先生を選んでね", list(character_profiles.keys()))
 st.image(
     character_profiles[character]["image_url"],
@@ -54,15 +151,6 @@ subject = st.selectbox("教科をえらぼう！", list(subjects.keys()))
 topic = st.selectbox("単元をえらぼう！", subjects[subject])
 level = st.radio("むずかしさは？", ["やさしい", "ふつう", "ちょっとむずかしい"])
 
-# セッション
-if "qa_data" not in st.session_state:
-    st.session_state.qa_data = None
-if "explanation_loop" not in st.session_state:
-    st.session_state.explanation_loop = 0
-if "show_explanation" not in st.session_state:
-    st.session_state.show_explanation = False
-if "auto_next" not in st.session_state:
-    st.session_state.auto_next = False
 
 # --------- 自動出題処理 ---------
 def generate_new_question():
@@ -101,27 +189,36 @@ def generate_new_question():
     except Exception as e:
         st.error(f"問題取得に失敗しました: {str(e)}")
 
-# ページ先頭で自動出題（auto_nextフラグがTrueなら）
+
 if st.session_state.auto_next:
     with st.spinner("次の問題を用意中…"):
         generate_new_question()
         st.session_state.auto_next = False
     st.rerun()
 
-# ---------- 手動出題 -----------
 if st.button("問題を出して！"):
     with st.spinner("先生が考え中…"):
         generate_new_question()
 
-# 出題・解答判定
 if st.session_state.qa_data:
     qd = st.session_state.qa_data
     st.markdown(f"### 📝 {character}からの問題：")
     st.markdown(f"**{qd['question']}**")
-    choice = st.radio("こたえをえらんでね：", qd["choices"], key=f"choices_{qd['question']}")
+    choice = st.radio(
+        "こたえをえらんでね：", qd["choices"], key=f"choices_{qd['question']}"
+    )
 
     if st.button("こたえあわせ！"):
-        if choice == qd["answer"]:
+        is_correct = int(choice == qd["answer"])
+        save_answer_log(
+            st.session_state.user_id,
+            subject,
+            topic,
+            qd["question"],
+            choice,
+            is_correct,
+        )
+        if is_correct:
             st.success(qd.get("correct_message", "🎉 正解だよ！すごいねっ！"))
         else:
             st.error(
@@ -130,7 +227,6 @@ if st.session_state.qa_data:
         st.info(f"🧠 解説：{qd['explanation']}")
         st.session_state.show_explanation = True
 
-    # さらに分かりやすい解説 + 次の問題ボタン
     if st.session_state.show_explanation:
         col1, col2 = st.columns(2)
         with col1:
@@ -161,7 +257,6 @@ if st.session_state.qa_data:
                 st.session_state.auto_next = True
                 st.rerun()
 
-# 初期ガイダンス
 if not st.session_state.qa_data:
     st.markdown(
         '👆 上のメニューから好きな教科・単元・先生をえらんで、"問題を出して！"ボタンを押してね！'
