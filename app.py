@@ -40,15 +40,21 @@ if "show_explanation" not in st.session_state:
 if "auto_next" not in st.session_state:
     st.session_state.auto_next = False
 
-
 # === Supabase認証関連 ===
 def create_user(username, password):
     data = {"username": username, "password": password}
-    res = supabase.table("user").insert(data).execute()
-    if res.data:
-        return True
-    return False
-
+    try:
+        res = supabase.table("user").insert(data).execute()
+        print(res)  # デバッグ用: レスポンス内容をコンソール表示
+        # エラー詳細をStreamlit画面にも出す
+        if hasattr(res, "error") and res.error:
+            st.error(f"登録エラー詳細: {res.error}")
+        if res.data:
+            return True
+        return False
+    except Exception as e:
+        st.error(f"登録エラー詳細: {str(e)}")
+        return False
 
 def check_login(username, password):
     res = (
@@ -62,13 +68,11 @@ def check_login(username, password):
         return res.data[0]["id"]  # user_id
     return None
 
-
 def get_username(user_id):
     res = supabase.table("user").select("username").eq("id", user_id).execute()
     if res.data:
         return res.data[0]["username"]
     return ""
-
 
 def save_answer_log(user_id, subject, topic, question, selected_choice, is_correct):
     data = {
@@ -80,7 +84,6 @@ def save_answer_log(user_id, subject, topic, question, selected_choice, is_corre
         "is_correct": is_correct,
     }
     supabase.table("answer_log").insert(data).execute()
-
 
 # --- ログイン・新規登録画面 ---
 if st.session_state.user_id is None:
@@ -151,7 +154,6 @@ subject = st.selectbox("教科をえらぼう！", list(subjects.keys()))
 topic = st.selectbox("単元をえらぼう！", subjects[subject])
 level = st.radio("むずかしさは？", ["やさしい", "ふつう", "ちょっとむずかしい"])
 
-
 # --------- 自動出題処理 ---------
 def generate_new_question():
     prompt = f"""
@@ -188,7 +190,6 @@ def generate_new_question():
         st.session_state.show_explanation = False
     except Exception as e:
         st.error(f"問題取得に失敗しました: {str(e)}")
-
 
 if st.session_state.auto_next:
     with st.spinner("次の問題を用意中…"):
