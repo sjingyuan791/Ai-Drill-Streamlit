@@ -2,7 +2,7 @@ import streamlit as st
 from auth import login_page, signup_page
 from pages.drill_page import drill_main
 from profile_page import profile_page
-from pages.dashboard import dashboard_main  # ← 新規作成（後述）
+from pages.dashboard_page import dashboard_main  # ← 追加
 
 # セッション初期化
 st.session_state.setdefault("user_id", None)
