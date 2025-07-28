@@ -3,7 +3,7 @@ from db import supabase
 
 def login_page():
     st.header("ログイン")
-    st.markdown("🔰 **はじめての人は『新規登録』ボタンから登録してね！**")
+    st.markdown("🔰 **はじめての方は「新規登録」ボタンから始めてね！**")
     email = st.text_input("メールアドレス")
     password = st.text_input("パスワード", type="password")
     col1, col2 = st.columns(2)
@@ -14,41 +14,63 @@ def login_page():
                     {"email": email, "password": password}
                 )
                 st.session_state.user_id = res.user.id
-                st.success("ログイン成功！")
+                # ユーザー名を取得
+                user_row = supabase.table("user").select("*").eq("id", res.user.id).single().execute()
+                st.session_state.username = user_row.data["username"]
+                st.success(f"ログイン成功！ようこそ、{st.session_state.username} さん")
                 st.rerun()
             except Exception as e:
                 st.error("ログインできませんでした。")
-                st.info("""
+                st.info(
+                    """
 新規登録した場合は、必ずメールを確認して「Confirm your mail」という青いボタンを押してから、もう一度ログインしてね！
-もしメールが届かない場合は迷惑メールフォルダもチェック！
-                """)
+メールが届かないときは迷惑メールフォルダも見てね。
+"""
+                )
     with col2:
         if st.button("新規登録はこちら"):
             st.session_state.page = "signup"
             st.rerun()
 
 def signup_page():
-    st.header("新規登録")
-    st.markdown("""
+    st.header("新規登録（無料）")
+    st.markdown(
+        """
 ### スタートガイド
-1. 下のフォームにメールアドレスと好きなパスワードを入力して「登録」
-2. メールが届いたら、青いボタン「Confirm your mail」を押そう
-3. その後、もう一度この画面でログインしてね！
+1. 下のフォームにメールアドレス・パスワード・ユーザー名を入力して「登録」
+2. 登録後、メールが届くので「Confirm your mail」ボタンを必ず押してね
+3. その後、この画面でログイン！
 
-※ メールが届かないときは迷惑メールフォルダも見てね。
-""")
-    email = st.text_input("新しいメールアドレス")
-    password = st.text_input("新しいパスワード", type="password")
+※ メールが届かないときは迷惑メールフォルダもチェック！
+"""
+    )
+    email = st.text_input("メールアドレス")
+    password = st.text_input("パスワード", type="password")
+    username = st.text_input("ユーザー名（例：たろう、tarou123 など）")
     col1, col2 = st.columns(2)
     with col1:
         if st.button("登録"):
-            try:
-                supabase.auth.sign_up({"email": email, "password": password})
-                st.success("登録ができました！メールの青いボタンを押してから、もう一度ログインしてください。")
-                st.session_state.page = "login"
-                st.rerun()
-            except Exception as e:
-                st.error(f"登録失敗: {e}")
+            if not email or not password or not username:
+                st.warning("すべての項目を入力してください")
+            else:
+                try:
+                    # サインアップ
+                    res = supabase.auth.sign_up({"email": email, "password": password})
+                    # ユーザーテーブルにも登録
+                    user_id = res.user.id if res.user else None
+                    if user_id:
+                        supabase.table("user").insert({
+                            "id": user_id,
+                            "username": username,
+                            "email": email,
+                        }).execute()
+                    st.success(
+                        "登録ができました！メールの青いボタンを押してから、もう一度ログインしてください。"
+                    )
+                    st.session_state.page = "login"
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"登録失敗: {e}")
     with col2:
         if st.button("ログイン画面へ戻る"):
             st.session_state.page = "login"
