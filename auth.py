@@ -14,10 +14,16 @@ def login_page():
                     {"email": email, "password": password}
                 )
                 st.session_state.user_id = res.user.id
-                # ユーザー名を取得
-                user_row = supabase.table("user").select("*").eq("id", res.user.id).single().execute()
-                st.session_state.username = user_row.data["username"]
-                st.success(f"ログイン成功！ようこそ、{st.session_state.username} さん")
+                # ↓ プロフィール未登録なら案内できるようにする
+                user_row = (
+                    supabase.table("user")
+                    .select("*")
+                    .eq("id", res.user.id)
+                    .single()
+                    .execute()
+                )
+                st.session_state.username = user_row.data.get("username", "")
+                st.success(f"ログイン成功！ようこそ、{st.session_state.username or 'ユーザー'} さん")
                 st.rerun()
             except Exception as e:
                 st.error("ログインできませんでした。")
@@ -54,16 +60,8 @@ def signup_page():
                 st.warning("すべての項目を入力してください")
             else:
                 try:
-                    # サインアップ
-                    res = supabase.auth.sign_up({"email": email, "password": password})
-                    # ユーザーテーブルにも登録
-                    user_id = res.user.id if res.user else None
-                    if user_id:
-                        supabase.table("user").insert({
-                            "id": user_id,
-                            "username": username,
-                            "email": email,
-                        }).execute()
+                    # サインアップ（userテーブルへのinsertはしない！）
+                    supabase.auth.sign_up({"email": email, "password": password})
                     st.success(
                         "登録ができました！メールの青いボタンを押してから、もう一度ログインしてください。"
                     )
