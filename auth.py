@@ -1,6 +1,7 @@
 import streamlit as st
 from db import supabase
 
+
 def login_page():
     st.header("ログイン")
     st.markdown("🔰 **はじめての方は「新規登録」ボタンから始めてね！**")
@@ -25,7 +26,9 @@ def login_page():
                 st.session_state.username = user_row.data.get("username", "")
                 # プロフィール未登録の場合の案内
                 if not st.session_state.username:
-                    st.info("プロフィール（ニックネーム）は未設定です。後からいつでも設定できます。")
+                    st.info(
+                        "プロフィール（ニックネーム）は未設定です。後からいつでも設定できます。"
+                    )
                 st.success(
                     f"ログイン成功！ようこそ、{st.session_state.username or 'ユーザー'} さん"
                 )
@@ -42,6 +45,7 @@ def login_page():
         if st.button("新規登録はこちら"):
             st.session_state.page = "signup"
             st.rerun()
+
 
 def signup_page():
     st.header("新規登録（無料）")
