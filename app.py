@@ -1,7 +1,7 @@
 import streamlit as st
 from auth import login_page, signup_page
 from pages.drill_page import drill_main
-from profile_page import profile_page  # ← プロフィール編集ページを追加
+from profile_page import profile_page  # プロフィール編集ページ
 
 # セッション管理
 if "user_id" not in st.session_state:
@@ -10,6 +10,13 @@ if "page" not in st.session_state:
     st.session_state.page = "login"
 if "username" not in st.session_state:
     st.session_state.username = None  # ユーザー名（ニックネーム）初期化
+
+# --- サイドバー ---
+if st.session_state.user_id is not None:
+    st.sidebar.title("メニュー")
+    if st.sidebar.button("プロフィール編集"):
+        st.session_state.page = "profile"
+        st.experimental_rerun()
 
 if st.session_state.user_id is None:
     # ログイン前
@@ -24,11 +31,15 @@ else:
         st.warning("ニックネームが未登録です。今すぐ登録できます！")
         if st.button("プロフィール登録に進む"):
             st.session_state.page = "profile"
-            st.rerun()
+            st.experimental_rerun()
         # ページ管理
         if st.session_state.page == "profile":
             profile_page()
             st.stop()
     else:
-        # メインページ（drillページなど）へ遷移
-        drill_main()
+        # ログイン済みかつプロフィール登録済み
+        if st.session_state.page == "profile":
+            profile_page()
+            st.stop()
+        else:
+            drill_main()
