@@ -14,7 +14,7 @@ def login_page():
                     {"email": email, "password": password}
                 )
                 st.session_state.user_id = res.user.id
-                # ↓ プロフィール未登録なら案内できるようにする
+                # ユーザー情報取得
                 user_row = (
                     supabase.table("user")
                     .select("*")
@@ -23,7 +23,12 @@ def login_page():
                     .execute()
                 )
                 st.session_state.username = user_row.data.get("username", "")
-                st.success(f"ログイン成功！ようこそ、{st.session_state.username or 'ユーザー'} さん")
+                # プロフィール未登録の場合の案内
+                if not st.session_state.username:
+                    st.info("プロフィール（ニックネーム）は未設定です。後からいつでも設定できます。")
+                st.success(
+                    f"ログイン成功！ようこそ、{st.session_state.username or 'ユーザー'} さん"
+                )
                 st.rerun()
             except Exception as e:
                 st.error("ログインできませんでした。")
@@ -43,24 +48,23 @@ def signup_page():
     st.markdown(
         """
 ### スタートガイド
-1. 下のフォームにメールアドレス・パスワード・ユーザー名を入力して「登録」
+1. 下のフォームにメールアドレス・パスワードを入力して「登録」
 2. 登録後、メールが届くので「Confirm your mail」ボタンを必ず押してね
 3. その後、この画面でログイン！
 
-※ メールが届かないときは迷惑メールフォルダもチェック！
+※メールが届かないときは迷惑メールフォルダもチェック！
 """
     )
     email = st.text_input("メールアドレス")
     password = st.text_input("パスワード", type="password")
-    username = st.text_input("ユーザー名（例：たろう、tarou123 など）")
     col1, col2 = st.columns(2)
     with col1:
         if st.button("登録"):
-            if not email or not password or not username:
+            if not email or not password:
                 st.warning("すべての項目を入力してください")
             else:
                 try:
-                    # サインアップ（userテーブルへのinsertはしない！）
+                    # サインアップ
                     supabase.auth.sign_up({"email": email, "password": password})
                     st.success(
                         "登録ができました！メールの青いボタンを押してから、もう一度ログインしてください。"
