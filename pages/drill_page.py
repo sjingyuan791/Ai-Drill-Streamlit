@@ -44,7 +44,14 @@ def drill_main():
             st.session_state[key] = val
 
     st.markdown("### AIドリルで勉強しよう！")
-    st.write(f"こんにちは、ユーザーID: {st.session_state.user_id} さん！")
+
+    # ---------------- ここだけ変更 ----------------
+    display_name = (
+        st.session_state.get("username")
+        or f"ユーザーID: {st.session_state.user_id}"
+    )
+    st.write(f"こんにちは、{display_name} さん！")
+    # ------------------------------------------------
 
     # 先生・教科・単元・難易度
     character = st.selectbox("AI先生を選んでね", list(character_profiles.keys()))
@@ -153,6 +160,5 @@ def drill_main():
             st.session_state.selected_choice = None
             st.session_state.show_explanation = False
             st.rerun()
-
     else:
         st.info("「新しい問題を出す」ボタンを押してスタート！")
