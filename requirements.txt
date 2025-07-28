@@ -4,3 +4,4 @@ pandas
 reportlab
 xlsxwriter
 supabase
+plotly
