@@ -22,7 +22,8 @@ def profile_page():
             ).execute()
             st.success("プロフィールが更新されました！")
             st.session_state["username"] = new_name  # 即時反映
-            st.experimental_rerun()
+            # --- ドリル画面へ自動遷移 ---
+            st.switch_page("pages/drill_page.py")
         except Exception as e:
             st.error(f"更新に失敗しました: {e}")
 
